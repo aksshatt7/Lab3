@@ -2,6 +2,7 @@ package org.translation;
 
 import java.util.List;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 /**
  * Main class for this program.
@@ -13,6 +14,8 @@ import java.util.Scanner;
  * - at any time, the user can type quit to quit the program<br/>
  */
 public class Main {
+    private static final CountryCodeConverter COUNTRY_CODE_CONVERTER = new CountryCodeConverter();
+    private static final LanguageCodeConverter LANGUAGE_CODE_CONVERTER = new LanguageCodeConverter();
 
     /**
      * This is the main entry point of our Translation System!<br/>
@@ -21,11 +24,8 @@ public class Main {
      */
     public static void main(String[] args) {
 
-        // TODO Task: once you finish the JSONTranslator,
-        //            you can use it here instead of the InLabByHandTranslator
-        //            to try out the whole program!
-        // Translator translator = new JSONTranslator(null);
-        Translator translator = new InLabByHandTranslator();
+        Translator translator = new JSONTranslator(null);
+        // Translator translator = new InLabByHandTranslator();
 
         runProgram(translator);
     }
@@ -39,29 +39,38 @@ public class Main {
     public static void runProgram(Translator translator) {
         while (true) {
             String country = promptForCountry(translator);
-            // TODO CheckStyle: The String "quit" appears 3 times in the file.
-            // TODO Checkstyle: String literal expressions should be on the left side of an equals comparison
-            if (country.equals("quit")) {
+            String quit = "quit";
+            if (quit.equalsIgnoreCase(country)) {
                 break;
             }
-            // TODO Task: Once you switch promptForCountry so that it returns the country
-            //            name rather than the 3-letter country code, you will need to
-            //            convert it back to its 3-letter country code when calling promptForLanguage
+            // Convert country name to Alpha-3 code
+            String countryCode = COUNTRY_CODE_CONVERTER.fromCountry(country);
+            if ("Code not found".equals(countryCode)) {
+                System.out.println("Invalid country selected.");
+                continue;
+            }
+
             String language = promptForLanguage(translator, country);
-            if (language.equals("quit")) {
+            if (quit.equalsIgnoreCase(language)) {
                 break;
             }
-            // TODO Task: Once you switch promptForLanguage so that it returns the language
-            //            name rather than the 2-letter language code, you will need to
-            //            convert it back to its 2-letter language code when calling translate.
-            //            Note: you should use the actual names in the message printed below though,
-            //            since the user will see the displayed message.
-            System.out.println(country + " in " + language + " is " + translator.translate(country, language));
-            System.out.println("Press enter to continue or quit to exit.");
+
+            // Convert language name to 2-letter code
+            String languageCode = LANGUAGE_CODE_CONVERTER.fromLanguage(language);
+            if ("Code not found".equals(languageCode)) {
+                System.out.println("Invalid language selected.");
+                continue;
+            }
+
+            // Output the translation
+            String translation = translator.translate(countryCode, languageCode);
+            System.out.println(country + " in " + language + " is " + translation);
+
+            System.out.println("Press enter to continue or type 'quit' to exit.");
             Scanner s = new Scanner(System.in);
             String textTyped = s.nextLine();
 
-            if ("quit".equals(textTyped)) {
+            if (quit.equalsIgnoreCase(textTyped)) {
                 break;
             }
         }
@@ -69,14 +78,14 @@ public class Main {
 
     // Note: CheckStyle is configured so that we don't need javadoc for private methods
     private static String promptForCountry(Translator translator) {
-        List<String> countries = translator.getCountries();
-        // TODO Task: replace the following println call, sort the countries alphabetically,
-        //            and print them out; one per line
-        //      hint: class Collections provides a static sort method
-        // TODO Task: convert the country codes to the actual country names before sorting
-        System.out.println(countries);
+        List<String> countryCodes = translator.getCountries();
 
-        System.out.println("select a country from above:");
+        List<String> countryNames = countryCodes.stream()
+                .map(COUNTRY_CODE_CONVERTER::fromCountryCode).sorted().collect(Collectors.toList());
+
+        countryNames.forEach(System.out::println);
+
+        System.out.println("Select a country from above (or type 'quit' to exit):");
 
         Scanner s = new Scanner(System.in);
         return s.nextLine();
@@ -86,11 +95,16 @@ public class Main {
     // Note: CheckStyle is configured so that we don't need javadoc for private methods
     private static String promptForLanguage(Translator translator, String country) {
 
-        // TODO Task: replace the line below so that we sort the languages alphabetically and print them out; one per line
-        // TODO Task: convert the language codes to the actual language names before sorting
-        System.out.println(translator.getCountryLanguages(country));
+        String countryCode = COUNTRY_CODE_CONVERTER.fromCountry(country);
 
-        System.out.println("select a language from above:");
+        List<String> languageCodes = translator.getCountryLanguages(countryCode);
+
+        List<String> languageNames = languageCodes.stream()
+                .map(LANGUAGE_CODE_CONVERTER::fromLanguageCode).sorted().collect(Collectors.toList());
+
+        languageNames.forEach(System.out::println);
+
+        System.out.println("Select a language from above (or type 'quit' to exit):");
 
         Scanner s = new Scanner(System.in);
         return s.nextLine();
